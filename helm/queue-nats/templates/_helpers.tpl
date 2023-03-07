@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "queue-natsjs.name" -}}
+{{- define "queue-nats.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "queue-natsjs.fullname" -}}
+{{- define "queue-nats.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "queue-natsjs.chart" -}}
+{{- define "queue-nats.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "queue-natsjs.labels" -}}
-helm.sh/chart: {{ include "queue-natsjs.chart" . }}
-{{ include "queue-natsjs.selectorLabels" . }}
+{{- define "queue-nats.labels" -}}
+helm.sh/chart: {{ include "queue-nats.chart" . }}
+{{ include "queue-nats.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "queue-natsjs.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "queue-natsjs.name" . }}
+{{- define "queue-nats.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "queue-nats.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "queue-natsjs.serviceAccountName" -}}
+{{- define "queue-nats.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "queue-natsjs.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "queue-nats.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

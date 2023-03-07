@@ -1,5 +1,5 @@
 apiVersion: v2
-name: queue-natsjs
+name: queue-nats
 description: A Helm chart for Awakari Queue
 
 # A chart can be either an 'application' or a 'library' chart.
@@ -22,8 +22,3 @@ version: 0.1.0
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
 appVersion: "1.16.0"
-
-dependencies:
-  - name: nats
-    version: "7.5.12"
-    repository: "https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami"

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package output;
+package queue;
 
 option go_package = "./api/grpc";
 
@@ -8,5 +8,27 @@ import "google/protobuf/empty.proto";
 import "api/grpc/cloudevents/cloudevent.proto";
 
 service Service {
-  rpc Submit(pb.CloudEvent) returns (google.protobuf.Empty);
+  rpc Create(CreateRequest) returns (google.protobuf.Empty);
+  rpc SubmitMessage(SubmitMessageRequest) returns (google.protobuf.Empty);
+  rpc PollMessages(PollMessagesRequest) returns (PollResponse);
+}
+
+message CreateRequest{
+  string queue = 1;
+  uint32 limit = 2;
+}
+
+message SubmitMessageRequest {
+  string queue = 1;
+  pb.CloudEvent msg = 2;
+}
+
+message PollMessagesRequest {
+  string queue = 1;
+  uint32 limit = 2;
+  uint32 timeoutMillis = 3;
+}
+
+message PollResponse {
+  repeated pb.CloudEvent msgs = 1;
 }

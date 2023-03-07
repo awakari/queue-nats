@@ -2,14 +2,14 @@
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "queue-natsjs.fullname" . }}
+  name: {{ include "queue-nats.fullname" . }}
   labels:
-    {{- include "queue-natsjs.labels" . | nindent 4 }}
+    {{- include "queue-nats.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "queue-natsjs.fullname" . }}
+    name: {{ include "queue-nats.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

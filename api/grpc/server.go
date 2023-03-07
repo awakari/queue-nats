@@ -2,11 +2,11 @@ package grpc
 
 import (
 	"fmt"
+	"github.com/awakari/queue-nats/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"net"
-	"output-log/service"
 )
 
 func Serve(svc service.Service, port uint16) (err error) {
