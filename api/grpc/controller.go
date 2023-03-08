@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"time"
 )
 
 type (
@@ -25,9 +24,9 @@ func NewServiceController(svc service.Service) ServiceServer {
 	}
 }
 
-func (sc serviceController) Create(ctx context.Context, req *CreateRequest) (resp *emptypb.Empty, err error) {
+func (sc serviceController) SetQueue(ctx context.Context, req *SetQueueRequest) (resp *emptypb.Empty, err error) {
 	resp = &emptypb.Empty{}
-	err = sc.svc.Create(ctx, req.Queue, req.Limit)
+	err = sc.svc.SetQueue(ctx, req.Name, req.Limit)
 	err = encodeError(err)
 	return
 }
@@ -43,10 +42,10 @@ func (sc serviceController) SubmitMessage(ctx context.Context, req *SubmitMessag
 	return
 }
 
-func (sc serviceController) PollMessages(ctx context.Context, req *PollMessagesRequest) (resp *PollResponse, err error) {
+func (sc serviceController) Poll(ctx context.Context, req *PollRequest) (resp *PollResponse, err error) {
 	var srcMsgs []*event.Event
 	var dstMsgs []*pb.CloudEvent
-	srcMsgs, err = sc.svc.PollMessages(ctx, req.Queue, req.Limit, time.Millisecond*time.Duration(req.TimeoutMillis))
+	srcMsgs, err = sc.svc.Poll(ctx, req.Queue, req.Limit)
 	if err == nil {
 		var dstMsg *pb.CloudEvent
 		for _, srcMsg := range srcMsgs {
@@ -68,8 +67,10 @@ func encodeError(src error) (dst error) {
 	switch {
 	case src == nil:
 		dst = nil
-	case errors.Is(src, service.ErrQueueAlreadyExists):
-		dst = status.Error(codes.AlreadyExists, src.Error())
+	case errors.Is(src, service.ErrMissingQueue):
+		dst = status.Error(codes.NotFound, src.Error())
+	case errors.Is(src, service.ErrQueueFull):
+		dst = status.Error(codes.Unavailable, src.Error())
 	default:
 		dst = status.Error(codes.Internal, src.Error())
 	}

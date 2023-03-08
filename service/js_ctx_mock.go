@@ -21,6 +21,12 @@ func (js jsCtxMock) PublishMsg(m *nats.Msg, opts ...nats.PubOpt) (*nats.PubAck, 
 	if m.Subject == "fail" {
 		return nil, errors.New("failed")
 	}
+	if m.Subject == "full" {
+		return nil, nats.ErrMaxMessages
+	}
+	if m.Subject == "missing" {
+		return nil, nats.ErrNoStreamResponse
+	}
 	return &nats.PubAck{}, nil
 }
 
@@ -78,6 +84,9 @@ func (js jsCtxMock) PullSubscribe(subj, durable string, opts ...nats.SubOpt) (*n
 	if subj == "fail" {
 		return nil, errors.New("failed")
 	}
+	if subj == "missing" {
+		return nil, nats.ErrNoMatchingStream
+	}
 	return &nats.Subscription{
 		Subject: subj,
 		Queue:   durable,
@@ -97,8 +106,9 @@ func (js jsCtxMock) AddStream(cfg *nats.StreamConfig, opts ...nats.JSOpt) (*nats
 }
 
 func (js jsCtxMock) UpdateStream(cfg *nats.StreamConfig, opts ...nats.JSOpt) (*nats.StreamInfo, error) {
-	//TODO implement me
-	panic("implement me")
+	return &nats.StreamInfo{
+		Config: *cfg,
+	}, nil
 }
 
 func (js jsCtxMock) DeleteStream(name string, opts ...nats.JSOpt) error {
@@ -159,8 +169,10 @@ func (js jsCtxMock) AddConsumer(stream string, cfg *nats.ConsumerConfig, opts ..
 }
 
 func (js jsCtxMock) UpdateConsumer(stream string, cfg *nats.ConsumerConfig, opts ...nats.JSOpt) (*nats.ConsumerInfo, error) {
-	//TODO implement me
-	panic("implement me")
+	return &nats.ConsumerInfo{
+		Stream: stream,
+		Name:   cfg.Name,
+	}, nil
 }
 
 func (js jsCtxMock) DeleteConsumer(stream, consumer string, opts ...nats.JSOpt) error {
@@ -169,8 +181,13 @@ func (js jsCtxMock) DeleteConsumer(stream, consumer string, opts ...nats.JSOpt) 
 }
 
 func (js jsCtxMock) ConsumerInfo(stream, name string, opts ...nats.JSOpt) (*nats.ConsumerInfo, error) {
-	//TODO implement me
-	panic("implement me")
+	if stream == "missing" {
+		return nil, nats.ErrConsumerNotFound
+	}
+	return &nats.ConsumerInfo{
+		Stream: stream,
+		Name:   stream,
+	}, nil
 }
 
 func (js jsCtxMock) ConsumersInfo(stream string, opts ...nats.JSOpt) <-chan *nats.ConsumerInfo {

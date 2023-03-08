@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"golang.org/x/exp/slog"
-	"time"
 )
 
 type logging struct {
@@ -20,11 +19,11 @@ func NewLogging(svc Service, log *slog.Logger) Service {
 	}
 }
 
-func (l logging) Create(ctx context.Context, queue string, limit uint32) (err error) {
+func (l logging) SetQueue(ctx context.Context, name string, limit uint32) (err error) {
 	defer func() {
-		l.log.Debug(fmt.Sprintf("Create(queue=%s, limit=%d): %s", queue, limit, err))
+		l.log.Debug(fmt.Sprintf("SetQueue(name=%s,  limit=%d): %s", name, limit, err))
 	}()
-	return l.svc.Create(ctx, queue, limit)
+	return l.svc.SetQueue(ctx, name, limit)
 }
 
 func (l logging) SubmitMessage(ctx context.Context, queue string, msg *event.Event) (err error) {
@@ -34,9 +33,9 @@ func (l logging) SubmitMessage(ctx context.Context, queue string, msg *event.Eve
 	return l.svc.SubmitMessage(ctx, queue, msg)
 }
 
-func (l logging) PollMessages(ctx context.Context, queue string, limit uint32, timeout time.Duration) (msgs []*event.Event, err error) {
+func (l logging) Poll(ctx context.Context, queue string, limit uint32) (msgs []*event.Event, err error) {
 	defer func() {
-		l.log.Debug(fmt.Sprintf("PollMessages(queue=%s, limit=%d, timeout=%s): %d, %s", queue, limit, timeout, len(msgs), err))
+		l.log.Debug(fmt.Sprintf("Poll(queue=%s, limit=%d): %d, %s", queue, limit, len(msgs), err))
 	}()
-	return l.svc.PollMessages(ctx, queue, limit, timeout)
+	return l.svc.Poll(ctx, queue, limit)
 }

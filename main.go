@@ -29,7 +29,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect JetStream: %s", err))
 	}
-	svc := service.NewService(js)
+	svc := service.NewService(js, cfg.Nats.PollTimeoutMillis)
 	svc = service.NewLogging(svc, log)
 	log.Info("connected, starting to listen for incoming requests...")
 	if err = grpc.Serve(svc, cfg.Api.Port); err != nil {

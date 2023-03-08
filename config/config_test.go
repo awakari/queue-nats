@@ -12,4 +12,5 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, uint16(8080), cfg.Api.Port)
 	assert.Equal(t, slog.LevelDebug, slog.Level(cfg.Log.Level))
 	assert.Equal(t, "nats://nats:4222", cfg.Nats.Uri)
+	assert.Equal(t, uint32(1), cfg.Nats.PollTimeoutMillis)
 }

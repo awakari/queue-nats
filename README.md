@@ -13,9 +13,9 @@
    3.4. [K8s](#34-k8s)<br/>
    &nbsp;&nbsp;&nbsp;3.4.1. [Helm](#341-helm) <br/>
 4. [Usage](#4-usage)<br/>
-   4.1. [Create Queue](#41-create-queue)<br/>
+   4.1. [Create/Update Queue](#41-createupdate-queue)<br/>
    4.2. [Submit Message](#42-submit-message)<br/>
-   4.3. [Poll New Messages](#43-poll-new-messages)<br/>
+   4.3. [Poll Messages](#43-poll-messages)<br/>
 5. [Design](#5-design)<br/>
    5.1. [Requirements](#51-requirements)<br/>
    5.2. [Approach](#52-approach)<br/>
@@ -106,7 +106,7 @@ where
 
 # 4. Usage
 
-## 4.1. Create Queue
+## 4.1. Create/Update Queue
 
 Example command:
 ```shell
@@ -115,13 +115,13 @@ grpcurl \
   -proto api/grpc/service.proto \
   -d @ \
   localhost:8080 \
-  queue.Service/Create
+  queue.Service/SetQueue
 ```
 Example payload:
 ```json
 {
-  "queue": "queue0",
-  "limit": 1000
+  "name": "q4",
+  "limit": 1
 }
 ```
 
@@ -139,7 +139,7 @@ grpcurl \
 Example payload:
 ```json
 {
-    "queue": "queue0",
+    "queue": "q4",
     "msg": {
       "id": "3426d090-1b8a-4a09-ac9c-41f2de24d5ac",
       "type": "example.type",
@@ -158,7 +158,7 @@ Example payload:
 }
 ```
 
-## 4.3. Poll New Messages
+## 4.3. Poll Messages
 
 Example command:
 ```shell
@@ -167,14 +167,13 @@ grpcurl \
   -proto api/grpc/service.proto \
   -d @ \
   localhost:8080 \
-  queue.Service/PollMessages
+  queue.Service/Poll
 ```
 Example payload:
 ```json
 {
-  "queue": "queue0",
-  "limit": 1000,
-  "timeoutMillis": 1
+  "queue": "q4",
+  "limit": 1000
 }
 ```
 
@@ -238,4 +237,3 @@ git push --tags
 ```
 
 The corresponding CI job is started to build a docker image and push it with the specified tag (+latest).
-

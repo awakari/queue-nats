@@ -54,7 +54,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestServiceController_Create(t *testing.T) {
+func TestServiceController_SetQueue(t *testing.T) {
 	//
 	addr := fmt.Sprintf("localhost:%d", port)
 	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -62,15 +62,14 @@ func TestServiceController_Create(t *testing.T) {
 	client := NewServiceClient(conn)
 	//
 	cases := map[string]error{
-		"existing": status.Error(codes.AlreadyExists, "queue already exists"),
-		"fail":     status.Error(codes.Internal, "failed to create a queue"),
-		"ok":       nil,
+		"fail": status.Error(codes.Internal, "failed to"),
+		"ok":   nil,
 	}
 	//
 	for k, c := range cases {
 		t.Run(k, func(t *testing.T) {
-			_, err := client.Create(context.TODO(), &CreateRequest{
-				Queue: k,
+			_, err := client.SetQueue(context.TODO(), &SetQueueRequest{
+				Name: k,
 			})
 			assert.ErrorIs(t, err, c)
 		})
@@ -85,8 +84,10 @@ func TestServiceController_SubmitMessage(t *testing.T) {
 	client := NewServiceClient(conn)
 	//
 	cases := map[string]error{
-		"fail": status.Error(codes.Internal, "failed to submit a message"),
-		"ok":   nil,
+		"fail":    status.Error(codes.Internal, "failed to"),
+		"missing": status.Error(codes.NotFound, "missing queue"),
+		"full":    status.Error(codes.Unavailable, "queue full"),
+		"ok":      nil,
 	}
 	//
 	for k, c := range cases {
@@ -100,7 +101,7 @@ func TestServiceController_SubmitMessage(t *testing.T) {
 	}
 }
 
-func TestServiceController_PollMessages(t *testing.T) {
+func TestServiceController_Poll(t *testing.T) {
 	//
 	addr := fmt.Sprintf("localhost:%d", port)
 	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -108,16 +109,20 @@ func TestServiceController_PollMessages(t *testing.T) {
 	client := NewServiceClient(conn)
 	//
 	cases := map[string]struct {
-		req  *PollMessagesRequest
+		req  *PollRequest
 		msgs []*pb.CloudEvent
 		err  error
 	}{
 		"fail": {
-			req: &PollMessagesRequest{Queue: "fail"},
-			err: status.Error(codes.Internal, "failed to poll messages"),
+			req: &PollRequest{Queue: "fail"},
+			err: status.Error(codes.Internal, "failed to"),
+		},
+		"missing": {
+			req: &PollRequest{Queue: "missing"},
+			err: status.Error(codes.NotFound, "missing queue"),
 		},
 		"ok": {
-			req: &PollMessagesRequest{},
+			req: &PollRequest{},
 			msgs: []*pb.CloudEvent{
 				{
 					Id:          "3426d090-1b8a-4a09-ac9c-41f2de24d5ac",
@@ -167,7 +172,7 @@ func TestServiceController_PollMessages(t *testing.T) {
 	//
 	for k, c := range cases {
 		t.Run(k, func(t *testing.T) {
-			resp, err := client.PollMessages(context.TODO(), c.req)
+			resp, err := client.Poll(context.TODO(), c.req)
 			assert.ErrorIs(t, err, c.err)
 			if err == nil {
 				msgs := resp.Msgs

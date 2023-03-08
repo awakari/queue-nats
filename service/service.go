@@ -11,67 +11,72 @@ import (
 )
 
 type Service interface {
-	Create(ctx context.Context, queue string, limit uint32) (err error)
+	SetQueue(ctx context.Context, name string, limit uint32) (err error)
 	SubmitMessage(ctx context.Context, queue string, msg *event.Event) (err error)
-	PollMessages(ctx context.Context, queue string, limit uint32, timeout time.Duration) (msgs []*event.Event, err error)
+	Poll(ctx context.Context, queue string, limit uint32) (msgs []*event.Event, err error)
 }
 
 type service struct {
-	js nats.JetStreamContext
+	js          nats.JetStreamContext
+	pollTimeout time.Duration
 }
 
-var ErrQueueAlreadyExists = errors.New("queue already exists")
+var ErrMissingQueue = errors.New("missing queue")
 
-var ErrQueueCreate = errors.New("failed to create a queue")
+var ErrQueueFull = errors.New("queue is full")
 
-var ErrSubmitMessage = errors.New("failed to submit a message")
+var ErrInternal = errors.New("failed to")
 
-var ErrPollMessages = errors.New("failed to poll messages")
-
-func NewService(js nats.JetStreamContext) Service {
+func NewService(js nats.JetStreamContext, pollTimeoutMillis uint32) Service {
 	return service{
-		js: js,
+		js:          js,
+		pollTimeout: time.Millisecond * time.Duration(pollTimeoutMillis),
 	}
 }
 
-func (svc service) Create(ctx context.Context, queue string, limit uint32) (err error) {
+func (svc service) SetQueue(ctx context.Context, name string, limit uint32) (err error) {
 	l := int(limit)
-	err = svc.addStream(queue, l)
+	err = svc.addStream(name, name, l)
 	if err == nil {
-		err = svc.addConsumer(queue, l)
+		err = svc.addConsumer(name, name, l)
 	}
 	if err != nil {
-		if errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
-			err = fmt.Errorf("%w: %s", ErrQueueAlreadyExists, queue)
-		} else {
-			err = fmt.Errorf("%w \"%s\": %s", ErrQueueCreate, queue, err)
-		}
+		err = fmt.Errorf("%w create queue \"%s\": %s", ErrInternal, name, err)
 	}
 	return
 }
 
-func (svc service) addStream(name string, limit int) (err error) {
+func (svc service) addStream(queue, subject string, limit int) (err error) {
 	streamConfig := nats.StreamConfig{
-		Name: name,
+		Name: queue,
 		Subjects: []string{
-			name,
+			subject,
 		},
 		MaxMsgs:   int64(limit),
 		Discard:   nats.DiscardNew,
 		Retention: nats.WorkQueuePolicy,
 	}
 	_, err = svc.js.AddStream(&streamConfig)
+	if errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
+		_, err = svc.js.UpdateStream(&streamConfig)
+	}
 	return
 }
 
-func (svc service) addConsumer(name string, limit int) (err error) {
+func (svc service) addConsumer(queue, subject string, limit int) (err error) {
 	consumerConfig := nats.ConsumerConfig{
-		Durable:         name,
-		FilterSubject:   name,
-		AckPolicy:       nats.AckAllPolicy,
+		Name:            queue,
+		Durable:         queue,
+		FilterSubject:   subject,
+		AckPolicy:       nats.AckExplicitPolicy,
 		MaxRequestBatch: limit,
 	}
-	_, err = svc.js.AddConsumer(name, &consumerConfig)
+	_, err = svc.js.ConsumerInfo(queue, queue)
+	if errors.Is(err, nats.ErrConsumerNotFound) || errors.Is(err, nats.ErrStreamNotFound) {
+		_, err = svc.js.AddConsumer(queue, &consumerConfig)
+	} else {
+		_, err = svc.js.UpdateConsumer(queue, &consumerConfig)
+	}
 	return
 }
 
@@ -86,30 +91,41 @@ func (svc service) SubmitMessage(ctx context.Context, queue string, msg *event.E
 		_, err = svc.js.PublishMsg(&natsMsg)
 	}
 	if err != nil {
-		err = fmt.Errorf("%w, id: %s, queue: %s, err: %s", ErrSubmitMessage, msg.ID(), queue, err)
+		switch {
+		case errors.Is(err, nats.ErrNoStreamResponse):
+			err = fmt.Errorf("%w \"%s\": failed to submit the message with id \"%s\"", ErrMissingQueue, queue, msg.ID())
+		case errors.Is(err, nats.ErrMaxMessages):
+			err = fmt.Errorf("%w: %s, message id: %s", ErrQueueFull, queue, msg.ID())
+		default:
+			err = fmt.Errorf("%w publish message id \"%s\" to the queue \"%s\": %s", ErrInternal, msg.ID(), queue, err)
+		}
 	}
 	return
 }
 
-func (svc service) PollMessages(ctx context.Context, queue string, limit uint32, timeout time.Duration) (msgs []*event.Event, err error) {
+func (svc service) Poll(ctx context.Context, queue string, limit uint32) (msgs []*event.Event, err error) {
 	var sub *nats.Subscription
 	sub, err = svc.js.PullSubscribe(queue, queue)
 	if err == nil {
 		l := int(limit)
 		err = sub.AutoUnsubscribe(l)
 		if err == nil {
-			msgs, err = fetch(sub, l, timeout)
+			msgs, err = svc.fetch(sub, l)
 		}
 	}
 	if err != nil {
-		err = fmt.Errorf("%w, queue: %s, limit: %d, error: %s", ErrPollMessages, queue, limit, err)
+		if errors.Is(err, nats.ErrNoMatchingStream) {
+			err = fmt.Errorf("%w \"%s\": failed to poll messages", ErrMissingQueue, queue)
+		} else {
+			err = fmt.Errorf("%w poll up to %d messages from the queue \"%s\": %s", ErrInternal, limit, queue, err)
+		}
 	}
 	return
 }
 
-func fetch(sub *nats.Subscription, limit int, timeout time.Duration) (msgs []*event.Event, err error) {
+func (svc service) fetch(sub *nats.Subscription, limit int) (msgs []*event.Event, err error) {
 	var natsMsgs []*nats.Msg
-	natsMsgs, err = sub.Fetch(limit, nats.MaxWait(timeout))
+	natsMsgs, err = sub.Fetch(limit, nats.MaxWait(svc.pollTimeout))
 	if errors.Is(err, nats.ErrTimeout) {
 		err = nil
 	}

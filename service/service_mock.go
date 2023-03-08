@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"github.com/cloudevents/sdk-go/v2/event"
-	"time"
 )
 
 type serviceMock struct {
@@ -16,27 +15,33 @@ func NewServiceMock(msgs []*event.Event) Service {
 	}
 }
 
-func (sm serviceMock) Create(ctx context.Context, queue string, limit uint32) (err error) {
+func (sm serviceMock) SetQueue(ctx context.Context, queue string, limit uint32) (err error) {
 	switch queue {
-	case "existing":
-		err = ErrQueueAlreadyExists
 	case "fail":
-		err = ErrQueueCreate
+		err = ErrInternal
 	}
 	return
 }
 
 func (sm serviceMock) SubmitMessage(ctx context.Context, queue string, msg *event.Event) (err error) {
-	if queue == "fail" {
-		err = ErrSubmitMessage
+	switch queue {
+	case "missing":
+		err = ErrMissingQueue
+	case "fail":
+		err = ErrInternal
+	case "full":
+		err = ErrQueueFull
 	}
 	return
 }
 
-func (sm serviceMock) PollMessages(ctx context.Context, queue string, limit uint32, timeout time.Duration) (msgs []*event.Event, err error) {
-	if queue == "fail" {
-		err = ErrPollMessages
-	} else {
+func (sm serviceMock) Poll(ctx context.Context, queue string, limit uint32) (msgs []*event.Event, err error) {
+	switch queue {
+	case "fail":
+		err = ErrInternal
+	case "missing":
+		err = ErrMissingQueue
+	default:
 		msgs = sm.msgs
 	}
 	return

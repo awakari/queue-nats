@@ -88,3 +88,4 @@ nats:
     user: "awakari"
     password: "awakari"
   uri: "nats://nats:4222"
+  pollTimeoutMillis: 10

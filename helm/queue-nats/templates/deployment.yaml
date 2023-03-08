@@ -40,6 +40,8 @@ spec:
               value: "{{ .Values.nats.auth.user }}"
             - name: NATS_PASSWORD
               value: "{{ .Values.nats.auth.password }}"
+            - name: NATS_POLL_TIMEOUT_MILLIS
+              value: "{{ .Values.nats.pollTimeoutMillis }}"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

@@ -15,9 +15,10 @@ type Config struct {
 }
 
 type NatsConfig struct {
-	Uri      string `envconfig:"NATS_URI" default:"nats://nats:4222" required:"true"`
-	User     string `envconfig:"NATS_USER" default:"awakari" required:"true"`
-	Password string `envconfig:"NATS_PASSWORD" default:"awakari" required:"true"`
+	Uri               string `envconfig:"NATS_URI" default:"nats://nats:4222" required:"true"`
+	User              string `envconfig:"NATS_USER" default:"awakari" required:"true"`
+	Password          string `envconfig:"NATS_PASSWORD" default:"awakari" required:"true"`
+	PollTimeoutMillis uint32 `envconfig:"NATS_POLL_TIMEOUT_MILLIS" default:"1" required:"true"`
 }
 
 func NewConfigFromEnv() (cfg Config, err error) {
