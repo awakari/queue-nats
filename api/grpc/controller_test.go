@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 			&msg1,
 		},
 	)
-	svc = service.NewLogging(svc, log)
+	svc = service.NewLoggingMiddleware(svc, log)
 	go func() {
 		err := Serve(svc, port)
 		if err != nil {
