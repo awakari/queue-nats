@@ -86,7 +86,7 @@ func TestServiceController_SubmitMessage(t *testing.T) {
 	cases := map[string]error{
 		"fail":    status.Error(codes.Internal, "failed to"),
 		"missing": status.Error(codes.NotFound, "missing queue"),
-		"full":    status.Error(codes.ResourceExhausted, "queue full"),
+		"full":    status.Error(codes.ResourceExhausted, "queue is full"),
 		"ok":      nil,
 	}
 	//
