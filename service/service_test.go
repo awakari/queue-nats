@@ -38,7 +38,7 @@ func TestService_SubmitMessage(t *testing.T) {
 		"missing": {
 			queue: "missing",
 			msg:   &msg0,
-			err:   ErrMissingQueue,
+			err:   ErrQueueMissing,
 		},
 		"fail": {
 			queue: "fail",

@@ -67,7 +67,7 @@ func encodeError(src error) (dst error) {
 	switch {
 	case src == nil:
 		dst = nil
-	case errors.Is(src, service.ErrMissingQueue):
+	case errors.Is(src, service.ErrQueueMissing):
 		dst = status.Error(codes.NotFound, src.Error())
 	case errors.Is(src, service.ErrQueueFull):
 		dst = status.Error(codes.ResourceExhausted, src.Error())

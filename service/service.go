@@ -21,7 +21,7 @@ type service struct {
 	pollTimeout time.Duration
 }
 
-var ErrMissingQueue = errors.New("missing queue")
+var ErrQueueMissing = errors.New("missing queue")
 
 var ErrQueueFull = errors.New("queue is full")
 
@@ -93,7 +93,7 @@ func (svc service) SubmitMessage(ctx context.Context, queue string, msg *event.E
 	if err != nil {
 		switch {
 		case errors.Is(err, nats.ErrNoStreamResponse):
-			err = fmt.Errorf("%w \"%s\": failed to submit the message with id \"%s\"", ErrMissingQueue, queue, msg.ID())
+			err = fmt.Errorf("%w \"%s\": failed to submit the message with id \"%s\"", ErrQueueMissing, queue, msg.ID())
 		case errors.Is(err, nats.ErrMaxMessages):
 			err = fmt.Errorf("%w: %s, message id: %s", ErrQueueFull, queue, msg.ID())
 		default:
@@ -115,7 +115,7 @@ func (svc service) Poll(ctx context.Context, queue string, limit uint32) (msgs [
 	}
 	if err != nil {
 		if errors.Is(err, nats.ErrNoMatchingStream) {
-			err = fmt.Errorf("%w \"%s\": failed to poll messages", ErrMissingQueue, queue)
+			err = fmt.Errorf("%w \"%s\": failed to poll messages", ErrQueueMissing, queue)
 		} else {
 			err = fmt.Errorf("%w poll up to %d messages from the queue \"%s\": %s", ErrInternal, limit, queue, err)
 		}
