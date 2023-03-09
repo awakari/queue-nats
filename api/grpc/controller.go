@@ -70,7 +70,7 @@ func encodeError(src error) (dst error) {
 	case errors.Is(src, service.ErrMissingQueue):
 		dst = status.Error(codes.NotFound, src.Error())
 	case errors.Is(src, service.ErrQueueFull):
-		dst = status.Error(codes.Unavailable, src.Error())
+		dst = status.Error(codes.ResourceExhausted, src.Error())
 	default:
 		dst = status.Error(codes.Internal, src.Error())
 	}
