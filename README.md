@@ -69,6 +69,15 @@ The service is configurable using the environment variables:
 
 NATS in the JetStream mode is required to be available.
 
+```shell
+helm install nats bitnami/nats \
+  --set jetstream.enabled=true \
+  --set persistence.enabled=true,resourceType="statefulset" \
+  --set auth.user=awakari \
+  --set auth.password=awakari \
+  --set replicaCount=2
+```
+
 ## 3.2. Bare
 
 Preconditions:
