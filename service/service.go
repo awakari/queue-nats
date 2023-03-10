@@ -107,11 +107,8 @@ func (svc service) Poll(ctx context.Context, queue string, limit uint32) (msgs [
 	var sub *nats.Subscription
 	sub, err = svc.js.PullSubscribe(queue, queue)
 	if err == nil {
-		l := int(limit)
-		err = sub.AutoUnsubscribe(l)
-		if err == nil {
-			msgs, err = svc.fetch(sub, l)
-		}
+		defer sub.Unsubscribe()
+		msgs, err = svc.fetch(sub, limit)
 	}
 	if err != nil {
 		if errors.Is(err, nats.ErrNoMatchingStream) {
@@ -123,9 +120,9 @@ func (svc service) Poll(ctx context.Context, queue string, limit uint32) (msgs [
 	return
 }
 
-func (svc service) fetch(sub *nats.Subscription, limit int) (msgs []*event.Event, err error) {
+func (svc service) fetch(sub *nats.Subscription, limit uint32) (msgs []*event.Event, err error) {
 	var natsMsgs []*nats.Msg
-	natsMsgs, err = sub.Fetch(limit, nats.MaxWait(svc.pollTimeout))
+	natsMsgs, err = sub.Fetch(int(limit), nats.MaxWait(svc.pollTimeout))
 	if errors.Is(err, nats.ErrTimeout) {
 		err = nil
 	}
