@@ -33,6 +33,13 @@ func (lm loggingMiddleware) SubmitMessage(ctx context.Context, queue string, msg
 	return lm.svc.SubmitMessage(ctx, queue, msg)
 }
 
+func (lm loggingMiddleware) SubmitMessageBatch(ctx context.Context, queue string, msgs []*event.Event) (count uint32, err error) {
+	defer func() {
+		lm.log.Debug(fmt.Sprintf("SubmitMessageBatch(queue=%s, count=%d): %d, %s", queue, len(msgs), count, err))
+	}()
+	return lm.svc.SubmitMessageBatch(ctx, queue, msgs)
+}
+
 func (lm loggingMiddleware) Poll(ctx context.Context, queue string, limit uint32) (msgs []*event.Event, err error) {
 	defer func() {
 		lm.log.Debug(fmt.Sprintf("Poll(queue=%s, limit=%d): %d, %s", queue, limit, len(msgs), err))

@@ -15,11 +15,11 @@
 4. [Usage](#4-usage)<br/>
    4.1. [Create/Update Queue](#41-createupdate-queue)<br/>
    4.2. [Submit Message](#42-submit-message)<br/>
-   4.3. [Poll Messages](#43-poll-messages)<br/>
+   4.3. [Submit Message Batch](#43-submit-message-batch)<br/>
+   4.4. [Poll Messages](#44-poll-messages)<br/>
 5. [Design](#5-design)<br/>
    5.1. [Requirements](#51-requirements)<br/>
    5.2. [Approach](#52-approach)<br/>
-   &nbsp;&nbsp;&nbsp;5.2.1. [Data Schema](#521-data-schema)<br/>
    5.3. [Limitations](#53-limitations)<br/>
 6. [Contributing](#6-contributing)<br/>
    6.1. [Versioning](#61-versioning)<br/>
@@ -167,7 +167,76 @@ Example payload:
 }
 ```
 
-## 4.3. Poll Messages
+## 4.3. Submit Message Batch
+
+For the sake of the performance, there's a batch submit API. It doesn't respond an error if the target queue is full but
+returns a number of the accepted messages from the beginning of the list. So a client can retry to submit the remaining 
+messages batch after some backoff. 
+
+Example command:
+```shell
+grpcurl \
+  -plaintext \
+  -proto api/grpc/service.proto \
+  -d @ \
+  localhost:8080 \
+  queue.Service/SubmitMessageBatch
+```
+Example payload:
+```json
+{
+    "queue": "q4",
+    "msgs": [
+       {
+         "id": "3426d090-1b8a-4a09-ac9c-41f2de24d5ac",
+         "type": "example.type",
+         "source": "example/uri",
+         "spec_version": "1.0",
+         "attributes": {
+           "subject": {
+             "ce_string": "Obi-Wan Kenobi"
+           },
+           "time": {
+             "ce_timestamp": "1985-04-12T23:20:50.52Z"
+           }
+         },
+         "text_data": "I felt a great disturbance in the force"
+       },
+       {
+          "id": "3426d090-1b8a-4a09-ac9c-41f2de24d5ad",
+          "type": "example.type",
+          "source": "example/uri",
+          "spec_version": "1.0",
+          "attributes": {
+             "subject": {
+                "ce_string": "Yoda"
+             },
+             "time": {
+                "ce_timestamp": "1985-05-11T12:02:05.25Z"
+             }
+          },
+          "text_data": "Try not. Do or do not. There is no try."
+       },
+       {
+          "id": "3426d090-1b8a-4a09-ac9c-41f2de24d5ae",
+          "type": "example.type",
+          "source": "example/uri",
+          "spec_version": "1.0",
+          "attributes": {
+             "subject": {
+                "ce_string": "Qui-Gon Jinn"
+             },
+             "time": {
+                "ce_timestamp": "1985-06-08T14:31:41.16Z"
+             }
+          },
+          "text_data": "The ability to speak does not make you intelligent."
+       }
+    ]
+}
+```
+
+## 4.4. Poll Messages
 
 Example command:
 ```shell

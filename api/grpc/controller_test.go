@@ -93,10 +93,87 @@ func TestServiceController_SubmitMessage(t *testing.T) {
 	for k, c := range cases {
 		t.Run(k, func(t *testing.T) {
 			_, err := client.SubmitMessage(context.TODO(), &SubmitMessageRequest{
-				Queue: k,
-				Msg:   &pb.CloudEvent{},
+				Queue: "queue0",
+				Msg: &pb.CloudEvent{
+					Id: k,
+				},
 			})
 			assert.ErrorIs(t, err, c)
+		})
+	}
+}
+
+func TestServiceController_SubmitMessageBatch(t *testing.T) {
+	//
+	addr := fmt.Sprintf("localhost:%d", port)
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.Nil(t, err)
+	client := NewServiceClient(conn)
+	//
+	cases := map[string]struct {
+		msgIds []string
+		resp   *BatchResponse
+	}{
+		"ok": {
+			msgIds: []string{
+				"msg0",
+				"msg1",
+				"msg2",
+			},
+			resp: &BatchResponse{
+				Count: 3,
+			},
+		},
+		"fail on 2nd": {
+			msgIds: []string{
+				"msg0",
+				"fail",
+				"msg2",
+			},
+			resp: &BatchResponse{
+				Count: 1,
+				Err:   "failed to",
+			},
+		},
+		"not enough space in the queue": {
+			msgIds: []string{
+				"msg0",
+				"msg1",
+				"full",
+			},
+			resp: &BatchResponse{
+				Count: 2,
+			},
+		},
+		"queue lost": {
+			msgIds: []string{
+				"missing",
+				"msg1",
+				"msg2",
+			},
+			resp: &BatchResponse{
+				Count: 0,
+				Err:   "missing queue",
+			},
+		},
+	}
+	//
+	for k, c := range cases {
+		t.Run(k, func(t *testing.T) {
+			var msgs []*pb.CloudEvent
+			for _, msgId := range c.msgIds {
+				msg := &pb.CloudEvent{
+					Id: msgId,
+				}
+				msgs = append(msgs, msg)
+			}
+			resp, err := client.SubmitMessageBatch(context.TODO(), &SubmitMessageBatchRequest{
+				Queue: k,
+				Msgs:  msgs,
+			})
+			assert.Nil(t, err)
+			assert.Equal(t, c.resp.Count, resp.Count)
+			assert.Equal(t, c.resp.Err, resp.Err)
 		})
 	}
 }

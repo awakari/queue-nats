@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github.com/cloudevents/sdk-go/v2/event"
 )
 
@@ -24,13 +25,27 @@ func (sm serviceMock) SetQueue(ctx context.Context, queue string, limit uint32) 
 }
 
 func (sm serviceMock) SubmitMessage(ctx context.Context, queue string, msg *event.Event) (err error) {
-	switch queue {
+	switch msg.ID() {
 	case "missing":
 		err = ErrQueueMissing
 	case "fail":
 		err = ErrInternal
 	case "full":
 		err = ErrQueueFull
+	}
+	return
+}
+
+func (sm serviceMock) SubmitMessageBatch(ctx context.Context, queue string, msgs []*event.Event) (count uint32, err error) {
+	for _, msg := range msgs {
+		err = sm.SubmitMessage(ctx, queue, msg)
+		if err != nil {
+			if errors.Is(err, ErrQueueFull) {
+				err = nil
+			}
+			break
+		}
+		count++
 	}
 	return
 }

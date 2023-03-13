@@ -42,6 +42,27 @@ func (sc serviceController) SubmitMessage(ctx context.Context, req *SubmitMessag
 	return
 }
 
+func (sc serviceController) SubmitMessageBatch(ctx context.Context, req *SubmitMessageBatchRequest) (resp *BatchResponse, err error) {
+	resp = &BatchResponse{}
+	var msg *event.Event
+	var msgs []*event.Event
+	for _, msgProto := range req.Msgs {
+		msg, err = format.FromProto(msgProto)
+		if err != nil {
+			break
+		}
+		msgs = append(msgs, msg)
+	}
+	if err == nil {
+		resp.Count, err = sc.svc.SubmitMessageBatch(ctx, req.Queue, msgs)
+	}
+	if err != nil {
+		resp.Err = err.Error()
+		err = nil // to avoid the nil response when some messages from the batch have been accepted
+	}
+	return
+}
+
 func (sc serviceController) Poll(ctx context.Context, req *PollRequest) (resp *PollResponse, err error) {
 	var srcMsgs []*event.Event
 	var dstMsgs []*pb.CloudEvent

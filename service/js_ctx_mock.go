@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	format "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
+	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/nats-io/nats.go"
 )
 
@@ -18,13 +20,15 @@ func (js jsCtxMock) Publish(subj string, data []byte, opts ...nats.PubOpt) (*nat
 }
 
 func (js jsCtxMock) PublishMsg(m *nats.Msg, opts ...nats.PubOpt) (*nats.PubAck, error) {
-	if m.Subject == "fail" {
+	var msg event.Event
+	_ = format.Protobuf.Unmarshal(m.Data, &msg)
+	if msg.ID() == "fail" {
 		return nil, errors.New("failed")
 	}
-	if m.Subject == "full" {
-		return nil, nats.ErrMaxMessages
+	if msg.ID() == "full" {
+		return nil, errors.New("nats: maximum messages exceeded")
 	}
-	if m.Subject == "missing" {
+	if msg.ID() == "missing" {
 		return nil, nats.ErrNoStreamResponse
 	}
 	return &nats.PubAck{}, nil

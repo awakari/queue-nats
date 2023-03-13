@@ -13,6 +13,7 @@ import (
 type Service interface {
 	SetQueue(ctx context.Context, name string, limit uint32) (err error)
 	SubmitMessage(ctx context.Context, queue string, msg *event.Event) (err error)
+	SubmitMessageBatch(ctx context.Context, queue string, msgs []*event.Event) (count uint32, err error)
 	Poll(ctx context.Context, queue string, limit uint32) (msgs []*event.Event, err error)
 }
 
@@ -81,23 +82,61 @@ func (svc service) addConsumer(queue, subject string, limit int) (err error) {
 }
 
 func (svc service) SubmitMessage(ctx context.Context, queue string, msg *event.Event) (err error) {
-	var natsMsgData []byte
-	natsMsgData, err = format.Protobuf.Marshal(msg)
+	var natsMsg *nats.Msg
+	natsMsg, err = convertToNatsMessage(queue, msg)
 	if err == nil {
-		natsMsg := nats.Msg{
-			Subject: queue,
-			Data:    natsMsgData,
-		}
-		_, err = svc.js.PublishMsg(&natsMsg)
+		_, err = svc.js.PublishMsg(natsMsg)
 	}
 	if err != nil {
 		switch {
 		case errors.Is(err, nats.ErrNoStreamResponse):
 			err = fmt.Errorf("%w \"%s\": failed to submit the message with id \"%s\"", ErrQueueMissing, queue, msg.ID())
-		case errors.Is(err, nats.ErrMaxMessages):
+		case err.Error() == "nats: maximum messages exceeded":
 			err = fmt.Errorf("%w: %s, message id: %s", ErrQueueFull, queue, msg.ID())
 		default:
 			err = fmt.Errorf("%w publish message id \"%s\" to the queue \"%s\": %s", ErrInternal, msg.ID(), queue, err)
+		}
+	}
+	return
+}
+
+func (svc service) SubmitMessageBatch(ctx context.Context, queue string, msgs []*event.Event) (count uint32, err error) {
+	var natsMsg *nats.Msg
+	var natsMsgs []*nats.Msg
+	for _, msg := range msgs {
+		natsMsg, err = convertToNatsMessage(queue, msg)
+		if err != nil {
+			break
+		}
+		natsMsgs = append(natsMsgs, natsMsg)
+	}
+	if err == nil {
+		for i, natsMsg := range natsMsgs {
+			_, err = svc.js.PublishMsg(natsMsg)
+			if err != nil {
+				switch {
+				case errors.Is(err, nats.ErrNoStreamResponse):
+					err = fmt.Errorf("%w \"%s\": failed to submit the message with id \"%s\"", ErrQueueMissing, queue, msgs[i].ID())
+				case err.Error() == "nats: maximum messages exceeded":
+					err = nil // just exit the loop and return the current count
+				default:
+					err = fmt.Errorf("%w publish message id \"%s\" to the queue \"%s\": %s", ErrInternal, msgs[i].ID(), queue, err)
+				}
+				break
+			}
+			count++
+		}
+	}
+	return
+}
+
+func convertToNatsMessage(queue string, src *event.Event) (dst *nats.Msg, err error) {
+	var natsMsgData []byte
+	natsMsgData, err = format.Protobuf.Marshal(src)
+	if err == nil {
+		dst = &nats.Msg{
+			Subject: queue,
+			Data:    natsMsgData,
 		}
 	}
 	return
