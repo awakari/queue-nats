@@ -5,6 +5,6 @@ RUN \
     apk add protoc protobuf-dev make git && \
     make build
 
-FROM alpine:3.17.0
+FROM scratch
 COPY --from=builder /go/src/queue-nats/queue-nats /bin/queue-nats
 ENTRYPOINT ["/bin/queue-nats"]
